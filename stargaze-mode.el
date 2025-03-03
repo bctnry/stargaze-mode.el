@@ -5,6 +5,13 @@
 ;;
 ;; This file is not part of GNU Emacs.
 
+(defvar stargaze-syntax-table nil "Syntax table for Stargaze.")
+(setq stargaze-syntax-table
+      (let ((synTable (make-syntax-table)))
+	(modify-syntax-entry ?\; "<" synTable)
+	(modify-syntax-entry ?\n ">" synTable)
+	synTable))
+
 (defvar stargaze-keywords nil "Stargaze keywords")
 (setq stargaze-keywords
       '("def" "fn" "if" "cond" "let" "letrec" "quote" "qquote" "unquote"
@@ -34,6 +41,16 @@
 	"bit~" "bit&" "bit^" "bit|" "bit<<" "bit>>"
 	"mkstr" "strlen" "strlist" "strvec" "str++"))
 
+(defun stargaze-completion ()
+  "Completion function for Stargaze."
+  (interactive)
+  (let ((bds (bounds-of-thing-at-point 'symbol))
+	start
+	end)
+    (setq start (car bds))
+    (setq end (cdr bds))
+    (list start end (append stargaze-keywords stargaze-functions) . nil)))
+
 (defvar stargaze-syntax-coloring nil)
 (setq stargaze-syntax-coloring
       (let (s-keywords-regex s-constants-regex s-functions-regex)
@@ -41,8 +58,7 @@
 	(setq s-constants-regex (regexp-opt stargaze-constants 'words))
 	(setq s-functions-regex (regexp-opt stargaze-functions 'words))
 
-	(list (cons ";[^\n\r]*$" 'font-lock-comment-face)
-	      (cons s-keywords-regex 'font-lock-keyword-face)
+	(list (cons s-keywords-regex 'font-lock-keyword-face)
 	      (cons s-constants-regex 'font-lock-constant-face)
 	      (cons s-functions-regex 'font-lock-function-name-face)
 	      (cons "#ch{[0-9a-fA-F]+}" 'font-lock-constant-face)
@@ -50,7 +66,12 @@
 
 (define-derived-mode stargaze-mode fundamental-mode "Stargaze"
   "Major mode for Stargaze"
-  (setq font-lock-defaults '((stargaze-syntax-coloring))))
+  (setq font-lock-defaults '((stargaze-syntax-coloring)))
+  (set-syntax-table stargaze-syntax-table)
+  (font-lock-default-fontify-syntactically (point-min) (point-max))
+  (setq-local comment-start ";; ")
+  (setq-local comment-end "")
+  (add-hook 'completion-at-point-functions 'stargaze-completion nil 'local))
 
 (add-to-list 'auto-mode-alist '("\\.sg\\'" . stargaze-mode))
 
